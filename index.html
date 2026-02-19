@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stethoscope - AI Changelogs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Import Instrument Serif (for title), Playfair Display, and Inter */
+        @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f9f8f4; /* Warm Paper Background */
+            color: #292524; /* Stone-800 text */
+            position: relative;
+        }
+        
+        .font-instrument {
+            font-family: 'Instrument Serif', serif;
+        }
+
+        h2, h3, .serif {
+            font-family: 'Playfair Display', serif;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
+        
+        .loader { border-top-color: transparent; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .hidden { display: none !important; }
+
+        /* Card styling */
+        .paper-card {
+            background-color: #ffffff;
+            border: 1px solid #e7e5e4;
+            box-shadow: 0 4px 12px -2px rgba(28, 25, 23, 0.03);
+        }
+        
+        /* Smooth fade in for elements */
+        .animate-fade-in { animation: fadeIn 0.8s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen selection:bg-emerald-100 selection:text-emerald-900 flex flex-col">
+
+    <!-- Background Canvas -->
+    <canvas id="bg-canvas" class="fixed inset-0 w-full h-full pointer-events-none z-[-1]"></canvas>
+
+    <!-- Branding Section -->
+    <div class="flex flex-col items-center justify-center pt-24 pb-12 animate-fade-in">
+        <h1 class="font-instrument italic text-[10rem] text-stone-800 leading-none tracking-tight">Stethoscope</h1>
+        <div class="flex items-center gap-2 mt-6 opacity-50 hover:opacity-100 transition-opacity">
+            <span class="text-[11px] font-bold tracking-[0.25em] uppercase text-stone-500">Git Changelog Generator</span>
+        </div>
+    </div>
+
+    <main class="w-full max-w-5xl mx-auto px-6 pb-16 space-y-8 flex-1">
+
+        <!-- Notification Toast -->
+        <div id="notification" class="fixed bottom-8 right-8 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+            <div class="bg-stone-800 text-[#f9f8f4] px-5 py-3 rounded-lg shadow-xl flex items-center gap-3 border border-stone-700">
+                <div id="notification-icon" class="text-emerald-300"></div>
+                <p id="notification-text" class="text-xs font-medium font-serif tracking-wide"></p>
+            </div>
+        </div>
+
+        <!-- 1. Connection Section -->
+        <section id="connection-section" class="paper-card rounded-2xl max-w-[420px] mx-auto transition-all duration-300 relative z-40 animate-fade-in" style="animation-delay: 0.1s;">
+            <div class="px-6 py-4 border-b border-stone-100 flex justify-between items-center bg-[#faf9f6] rounded-t-2xl">
+                <h2 class="text-xs font-bold flex items-center gap-2 text-stone-700 uppercase tracking-widest">
+                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                    Connect Repository
+                </h2>
+                <button id="logout-btn" class="text-[10px] text-red-500 hover:text-red-700 font-bold uppercase tracking-wider hidden border-b border-red-200 hover:border-red-600 transition-all pb-0.5">Disconnect</button>
+            </div>
+            
+            <div class="p-6">
+                <!-- Auth Form -->
+                <div id="auth-form" class="space-y-5">
+                    <div class="flex justify-center gap-3 p-1 bg-stone-100 rounded-lg">
+                        <button id="platform-github" class="flex-1 py-2 px-3 rounded-md flex items-center justify-center gap-2 text-xs font-bold transition-all bg-white shadow-sm text-stone-800 ring-1 ring-stone-200">
+                            <i data-lucide="github" class="w-3.5 h-3.5"></i> GitHub
+                        </button>
+                        <button id="platform-gitlab" class="flex-1 py-2 px-3 rounded-md flex items-center justify-center gap-2 text-xs font-bold transition-all text-stone-400 hover:text-stone-800 hover:bg-white/50">
+                            <i data-lucide="gitlab" class="w-3.5 h-3.5"></i> GitLab
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Personal Access Token</label>
+                        <input type="password" id="token-input" placeholder="Paste token..." class="w-full px-4 py-2.5 bg-[#fcfbf9] border border-stone-200 rounded-lg focus:ring-1 focus:ring-emerald-200 focus:border-emerald-400 outline-none transition-all text-xs font-mono text-stone-700 placeholder:text-stone-300">
+                    </div>
+
+                    <button id="connect-btn" class="w-full py-3 bg-stone-800 text-[#f9f8f4] rounded-lg hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-xs tracking-widest uppercase shadow-md shadow-stone-200 transition-all flex items-center justify-center gap-2 hover:translate-y-[-1px]">
+                        <span id="connect-text">Connect</span>
+                        <div id="connect-loader" class="loader w-3.5 h-3.5 border-2 border-[#f9f8f4] rounded-full hidden"></div>
+                    </button>
+                </div>
+
+                <!-- Repo & Config (Logged In) -->
+                <div id="config-form" class="hidden space-y-6">
+                    <div class="space-y-4">
+                        <!-- Repository Picker -->
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Select Project</label>
+                            <div class="relative">
+                                <button id="repo-dropdown-toggle" class="w-full px-4 py-2.5 bg-[#fcfbf9] border border-stone-200 rounded-lg text-left flex justify-between items-center hover:border-emerald-300 transition-all shadow-sm group">
+                                    <span id="selected-repo-name" class="text-xs font-medium text-stone-400 group-hover:text-stone-600 transition-colors truncate mr-2">Search repository...</span>
+                                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-stone-400 flex-shrink-0"></i>
+                                </button>
+                                
+                                <div id="repo-dropdown-menu" class="absolute top-full left-0 right-0 mt-2 bg-white border border-stone-200 rounded-lg shadow-xl z-[60] overflow-hidden hidden">
+                                    <div class="p-2 border-b border-stone-100 bg-[#faf9f6]">
+                                        <div class="flex items-center px-3 py-1.5 bg-white border border-stone-200 rounded focus-within:ring-1 focus-within:ring-emerald-100 transition-all">
+                                            <i data-lucide="search" class="w-3 h-3 text-stone-400 mr-2"></i>
+                                            <input type="text" id="repo-search" placeholder="Search..." class="bg-transparent border-none outline-none text-xs w-full text-stone-800 placeholder:text-stone-400">
+                                        </div>
+                                    </div>
+                                    <div id="repo-list" class="max-h-48 overflow-y-auto custom-scrollbar p-1">
+                                        <!-- Repos populated by JS -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Timeframe Selection -->
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Timeframe</label>
+                            <div class="flex flex-col gap-3">
+                                <div class="flex bg-stone-100 p-1 rounded-lg">
+                                    <button data-time="7d" class="time-btn flex-1 py-1.5 px-2 rounded text-[10px] font-bold transition-all bg-white shadow-sm text-stone-800 ring-1 ring-stone-200 uppercase tracking-wide">7 Days</button>
+                                    <button data-time="30d" class="time-btn flex-1 py-1.5 px-2 rounded text-[10px] font-bold transition-all text-stone-400 hover:text-stone-800 uppercase tracking-wide">30 Days</button>
+                                    <button data-time="custom" class="time-btn flex-1 py-1.5 px-2 rounded text-[10px] font-bold transition-all text-stone-400 hover:text-stone-800 uppercase tracking-wide">Custom</button>
+                                </div>
+                                <div id="custom-date-range" class="flex items-center gap-2 hidden animate-fade-in">
+                                    <input type="date" id="start-date" class="flex-1 px-2 py-1.5 border border-stone-200 rounded text-[10px] font-medium bg-white">
+                                    <span class="text-stone-400 text-[10px] serif italic">to</span>
+                                    <input type="date" id="end-date" class="flex-1 px-2 py-1.5 border border-stone-200 rounded text-[10px] font-medium bg-white">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex justify-center border-t border-stone-100">
+                        <button id="fetch-commits-btn" class="mt-2 px-8 py-2.5 bg-stone-800 text-[#f9f8f4] rounded-full hover:bg-stone-700 disabled:opacity-50 font-bold shadow-md shadow-stone-200 transition-all flex items-center gap-2 hover:-translate-y-0.5 text-xs tracking-wide uppercase">
+                            <i data-lucide="refresh-cw" id="fetch-icon" class="w-3.5 h-3.5"></i>
+                            <span id="fetch-text">Fetch Commits</span>
+                            <div id="fetch-loader" class="loader w-3.5 h-3.5 border-2 border-[#f9f8f4] rounded-full hidden"></div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Generation Section -->
+        <div id="generation-section" class="hidden animate-fade-in">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Commit Sidebar -->
+                <div class="lg:col-span-4 flex flex-col h-[750px] paper-card rounded-2xl overflow-hidden">
+                    <div class="px-5 py-4 border-b border-stone-100 bg-[#faf9f6] flex justify-between items-center rounded-t-2xl">
+                        <h3 class="font-bold text-stone-700 flex items-center gap-2 text-xs uppercase tracking-wider">
+                            <div class="w-1.5 h-1.5 rounded-full bg-stone-300"></div>
+                            Commits <span id="commit-count" class="ml-1 text-stone-400 font-serif italic font-normal text-[10px]">(0)</span>
+                        </h3>
+                    </div>
+                    <div id="commit-list" class="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scrollbar bg-white">
+                        <!-- Commits populated by JS -->
+                    </div>
+                    
+                    <!-- Controls Area -->
+                    <div class="p-4 border-t border-stone-100 bg-[#faf9f6] space-y-4">
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Format</label>
+                            <div class="grid grid-cols-2 gap-2 p-1 bg-stone-200/50 rounded-lg">
+                                <button id="mode-markdown" class="mode-btn py-1.5 px-2 rounded text-[10px] font-bold transition-all bg-white shadow-sm text-stone-800 flex items-center justify-center gap-1.5 uppercase tracking-wide">
+                                    <i data-lucide="file-text" class="w-3 h-3"></i> MD
+                                </button>
+                                <button id="mode-email" class="mode-btn py-1.5 px-2 rounded text-[10px] font-bold transition-all text-stone-400 hover:text-stone-800 flex items-center justify-center gap-1.5 uppercase tracking-wide">
+                                    <i data-lucide="mail" class="w-3 h-3"></i> Email
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- API Key Input (New for GitHub Safe Version) -->
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                                <i data-lucide="key" class="w-3 h-3"></i> API Key
+                            </label>
+                            <input type="password" id="api-key-input" placeholder="sk-or-..." class="w-full px-3 py-2 bg-white border border-stone-200 rounded-lg focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-xs text-stone-700 placeholder:text-stone-300">
+                        </div>
+
+                        <!-- OpenRouter Model -->
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                                <i data-lucide="globe" class="w-3 h-3"></i> Model
+                            </label>
+                            <div class="relative">
+                                <select id="openrouter-model" class="w-full px-3 py-2 bg-white border border-stone-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-emerald-500 outline-none text-stone-700 appearance-none">
+                                    <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
+                                    <option value="anthropic/claude-sonnet-4" selected>Claude Sonnet 4</option>
+                                    <option value="anthropic/claude-3.5-haiku">Claude 3.5 Haiku</option>
+                                    <option value="openai/gpt-4o">GPT-4o</option>
+                                    <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+                                    <option value="meta-llama/llama-4-maverick">Llama 4 Maverick</option>
+                                    <option value="deepseek/deepseek-r1">DeepSeek R1</option>
+                                    <option value="qwen/qwen-2.5-72b-instruct">Qwen 2.5 72B</option>
+                                </select>
+                                <i data-lucide="chevron-down" class="absolute right-3 top-2.5 w-3.5 h-3.5 text-stone-400 pointer-events-none"></i>
+                            </div>
+                        </div>
+
+                        <!-- Custom Instructions -->
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                                <i data-lucide="pencil" class="w-3 h-3"></i> Instructions
+                            </label>
+                            <textarea id="custom-prompt" rows="2" placeholder="e.g. Focus on user-facing changes..." class="w-full px-3 py-2 bg-white border border-stone-200 rounded-lg focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-xs resize-none text-stone-700 placeholder:text-stone-300"></textarea>
+                        </div>
+
+                        <button id="generate-btn" class="w-full py-3 bg-stone-800 text-white rounded-lg font-bold shadow-md shadow-stone-200 hover:bg-stone-700 active:scale-95 transition-all flex items-center justify-center gap-2 group">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5 group-hover:rotate-12 transition-transform text-emerald-200"></i>
+                            <span id="generate-text" class="text-xs tracking-widest uppercase">Generate</span>
+                            <div id="generate-loader" class="loader w-3.5 h-3.5 border-2 border-white rounded-full hidden"></div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Preview Area -->
+                <div class="lg:col-span-8 flex flex-col h-[750px] paper-card rounded-2xl overflow-hidden">
+                    <div class="px-5 py-4 border-b border-stone-100 bg-[#faf9f6] flex justify-between items-center rounded-t-2xl">
+                        <h3 class="font-bold text-stone-700 flex items-center gap-2 text-xs uppercase tracking-wider">
+                            <div class="w-1.5 h-1.5 rounded-full bg-stone-300"></div>
+                            Preview
+                        </h3>
+                        <div class="flex gap-1.5">
+                            <button id="copy-btn" class="p-1.5 text-stone-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition-all" title="Copy to Clipboard">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button id="download-btn" class="p-1.5 text-stone-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition-all" title="Download File">
+                                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="output-canvas" class="flex-1 overflow-y-auto bg-white p-8 custom-scrollbar">
+                        <div id="placeholder-empty" class="h-full flex flex-col items-center justify-center text-center opacity-40">
+                            <div class="w-16 h-16 bg-stone-50 rounded-full flex items-center justify-center mb-4 border border-stone-100">
+                                <i data-lucide="feather" class="w-6 h-6 text-stone-300"></i>
+                            </div>
+                            <p class="text-base font-serif italic text-stone-500">Ready to Write</p>
+                        </div>
+                        <div id="output-content" class="hidden prose prose-stone prose-sm max-w-none prose-headings:font-serif prose-headings:font-normal prose-a:text-emerald-600">
+                            <pre id="output-raw" class="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-stone-700 bg-[#faf9f6] p-6 rounded-lg border border-stone-100"></pre>
+                            <div id="output-html" class="hidden border border-stone-100 rounded-lg p-6 shadow-sm bg-white"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- Background Animation Logic ---
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        const gridSize = 40;
+        let squares = [];
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+
+        class Square {
+            constructor() {
+                this.x = Math.floor(Math.random() * (width / gridSize)) * gridSize;
+                this.y = Math.floor(Math.random() * (height / gridSize)) * gridSize;
+                this.life = 0;
+                this.maxLife = Math.random() * 100 + 50; 
+                this.active = true;
+            }
+
+            draw() {
+                this.life++;
+                if (this.life > this.maxLife) this.active = false;
+                const opacity = Math.sin((this.life / this.maxLife) * Math.PI) * 0.12; 
+                ctx.fillStyle = `rgba(41, 37, 36, ${opacity})`; // Stone-800
+                ctx.fillRect(this.x, this.y, gridSize, gridSize);
+            }
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.06)'; 
+            ctx.lineWidth = 1;
+            for (let x = 0; x <= width; x += gridSize) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+            }
+            for (let y = 0; y <= height; y += gridSize) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            drawGrid();
+            if (Math.random() < 0.25) squares.push(new Square()); 
+            squares = squares.filter(s => s.active);
+            squares.forEach(s => s.draw());
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+        animate();
+
+        // --- State Management ---
+        const state = {
+            platform: 'github',
+            token: '',
+            isAuthenticated: false,
+            repos: [],
+            selectedRepo: null,
+            commits: [],
+            timeframe: '7d',
+            customRange: { start: '', end: '' },
+            outputMode: 'markdown',
+            changelog: '',
+            isGenerating: false,
+            isFetching: false,
+            // GitHub Safe: Load key from localStorage instead of hardcoding
+            aiApiKey: localStorage.getItem('stethoscope_api_key') || '',
+            openrouterModel: 'anthropic/claude-sonnet-4',
+            customPrompt: ''
+        };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gitlog-ai';
+
+        // --- Selectors ---
+        const els = {
+            tokenInput: document.getElementById('token-input'),
+            connectBtn: document.getElementById('connect-btn'),
+            connectText: document.getElementById('connect-text'),
+            connectLoader: document.getElementById('connect-loader'),
+            authForm: document.getElementById('auth-form'),
+            configForm: document.getElementById('config-form'),
+            logoutBtn: document.getElementById('logout-btn'),
+            repoDropdownToggle: document.getElementById('repo-dropdown-toggle'),
+            repoDropdownMenu: document.getElementById('repo-dropdown-menu'),
+            selectedRepoName: document.getElementById('selected-repo-name'),
+            repoSearch: document.getElementById('repo-search'),
+            repoList: document.getElementById('repo-list'),
+            timeBtns: document.querySelectorAll('.time-btn'),
+            customDateRange: document.getElementById('custom-date-range'),
+            startDate: document.getElementById('start-date'),
+            endDate: document.getElementById('end-date'),
+            fetchBtn: document.getElementById('fetch-commits-btn'),
+            fetchIcon: document.getElementById('fetch-icon'),
+            fetchLoader: document.getElementById('fetch-loader'),
+            fetchText: document.getElementById('fetch-text'),
+            generationSection: document.getElementById('generation-section'),
+            commitList: document.getElementById('commit-list'),
+            commitCount: document.getElementById('commit-count'),
+            modeBtns: document.querySelectorAll('.mode-btn'),
+            generateBtn: document.getElementById('generate-btn'),
+            generateText: document.getElementById('generate-text'),
+            generateLoader: document.getElementById('generate-loader'),
+            outputRaw: document.getElementById('output-raw'),
+            outputHtml: document.getElementById('output-html'),
+            outputContent: document.getElementById('output-content'),
+            placeholderEmpty: document.getElementById('placeholder-empty'),
+            copyBtn: document.getElementById('copy-btn'),
+            downloadBtn: document.getElementById('download-btn'),
+            notification: document.getElementById('notification'),
+            notificationText: document.getElementById('notification-text'),
+            notificationIcon: document.getElementById('notification-icon'),
+            apiKeyInput: document.getElementById('api-key-input')
+        };
+
+        // --- Helper Functions ---
+
+        function notify(message, iconName = 'info') {
+            els.notificationText.innerText = message;
+            els.notificationIcon.innerHTML = `<i data-lucide="${iconName}"></i>`;
+            lucide.createIcons();
+            
+            els.notification.classList.remove('translate-y-20', 'opacity-0');
+            els.notification.classList.add('translate-y-0', 'opacity-100');
+            
+            setTimeout(() => {
+                els.notification.classList.add('translate-y-20', 'opacity-0');
+                els.notification.classList.remove('translate-y-0', 'opacity-100');
+            }, 3000);
+        }
+
+        function formatDate(date) {
+            return new Date(date).toISOString().split('T')[0];
+        }
+
+        function getRelativeDate(days) {
+            const date = new Date();
+            date.setDate(date.getDate() - days);
+            return date;
+        }
+
+        async function apiCallWithBackoff(url, options, retries = 5, delay = 1000) {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) {
+                    if (retries > 0 && response.status >= 500) {
+                        await new Promise(r => setTimeout(r, delay));
+                        return apiCallWithBackoff(url, options, retries - 1, delay * 2);
+                    }
+                    throw new Error(response.statusText);
+                }
+                return await response.json();
+            } catch (err) {
+                if (retries > 0) {
+                    await new Promise(r => setTimeout(r, delay));
+                    return apiCallWithBackoff(url, options, retries - 1, delay * 2);
+                }
+                throw err;
+            }
+        }
+
+        // --- Core Functions ---
+
+        async function fetchRepos() {
+            setLoading(true, 'connect');
+            try {
+                let data = [];
+                if (state.platform === 'github') {
+                    const res = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
+                        headers: { Authorization: `token ${state.token}` }
+                    });
+                    if (!res.ok) throw new Error('Auth failed. Check token scopes.');
+                    data = await res.json();
+                    state.repos = data.map(r => ({ id: r.id, name: r.full_name, default_branch: r.default_branch }));
+                } else {
+                    const res = await fetch('https://gitlab.com/api/v4/projects?membership=true&order_by=updated_at&per_page=100', {
+                        headers: { 'PRIVATE-TOKEN': state.token }
+                    });
+                    if (!res.ok) throw new Error('Auth failed. Check token scopes.');
+                    data = await res.json();
+                    state.repos = data.map(r => ({ id: r.id, name: r.path_with_namespace, default_branch: r.default_branch }));
+                }
+                
+                state.isAuthenticated = true;
+                renderAuthUI();
+                renderRepoList();
+                notify("Successfully connected!", "check-circle");
+            } catch (error) {
+                notify(error.message, "alert-circle");
+            } finally {
+                setLoading(false, 'connect');
+            }
+        }
+
+        async function fetchCommits() {
+            if (!state.selectedRepo) {
+                notify("Please select a repository first.", "alert-circle");
+                return;
+            }
+
+            setLoading(true, 'fetch');
+            let since, until;
+            
+            if (state.timeframe === 'custom') {
+                since = new Date(els.startDate.value).toISOString();
+                const end = new Date(els.endDate.value);
+                end.setHours(23, 59, 59);
+                until = end.toISOString();
+            } else {
+                const days = state.timeframe === '7d' ? 7 : 30;
+                since = getRelativeDate(days).toISOString();
+                until = new Date().toISOString();
+            }
+
+            try {
+                let fetchedCommits = [];
+                if (state.platform === 'github') {
+                    const url = `https://api.github.com/repos/${state.selectedRepo.name}/commits?since=${since}&until=${until}&per_page=100`;
+                    const res = await fetch(url, { headers: { Authorization: `token ${state.token}` } });
+                    if (!res.ok) throw new Error('Failed to fetch GitHub commits');
+                    const data = await res.json();
+                    fetchedCommits = data.map(c => ({
+                        message: c.commit.message,
+                        date: c.commit.author.date,
+                        author: c.commit.author.name,
+                        sha: c.sha.substring(0, 7)
+                    }));
+                } else {
+                    const url = `https://gitlab.com/api/v4/projects/${state.selectedRepo.id}/repository/commits?since=${since}&until=${until}&per_page=100`;
+                    const res = await fetch(url, { headers: { 'PRIVATE-TOKEN': state.token } });
+                    if (!res.ok) throw new Error('Failed to fetch GitLab commits');
+                    const data = await res.json();
+                    fetchedCommits = data.map(c => ({
+                        message: c.message,
+                        date: c.created_at,
+                        author: c.author_name,
+                        sha: c.short_id
+                    }));
+                }
+
+                state.commits = fetchedCommits;
+                renderCommitList();
+                els.generationSection.classList.remove('hidden');
+                
+                if (fetchedCommits.length === 0) {
+                    notify("No commits found in this period.", "info");
+                } else {
+                    notify(`Found ${fetchedCommits.length} commits.`, "check-circle");
+                }
+            } catch (error) {
+                notify(error.message, "alert-circle");
+            } finally {
+                setLoading(false, 'fetch');
+            }
+        }
+
+        async function generateChangelog() {
+            if (state.commits.length === 0) return;
+            if (!state.aiApiKey) {
+                notify("AI API key is missing. Please enter it below.", "alert-circle");
+                return;
+            }
+            setLoading(true, 'generate');
+            
+            const commitListStr = state.commits.map(c => `- ${c.message} (by ${c.author})`).join('\n');
+            const customInstructions = state.customPrompt ? `\nAdditional instructions from the user: ${state.customPrompt}` : '';
+            let prompt = "";
+            
+            if (state.outputMode === 'email') {
+                prompt = `You are a Product Marketing Manager writing a product update email to users.
+                  Create a clean, HTML-formatted email body based on these git commits.
+                  Guidelines: 1. Raw HTML code with inline CSS. No markdown. 2. Modern, clean, sans-serif font. 3. Sections: Subject, Greeting, Features, Fixes, Community.${customInstructions}
+                  Commits:\n${commitListStr}`;
+            } else {
+                prompt = `Expert Release Manager. Create professional Markdown changelog.
+                  Categorize: Features, Bug Fixes, Maintenance, Styling. Clear date range. Contributors section. Just Markdown output.${customInstructions}
+                  Commits:\n${commitListStr}`;
+            }
+
+            try {
+                // Using OpenRouter as requested in the provided code block
+                const result = await apiCallWithBackoff(
+                    'https://openrouter.ai/api/v1/chat/completions',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${state.aiApiKey}`,
+                            'HTTP-Referer': window.location.href,
+                            'X-Title': 'GitLog AI'
+                        },
+                        body: JSON.stringify({
+                            model: state.openrouterModel,
+                            messages: [{ role: 'user', content: prompt }]
+                        })
+                    }
+                );
+                let generatedText = result.choices?.[0]?.message?.content || 'No response from AI.';
+                if (state.outputMode === 'email') {
+                    generatedText = generatedText.replace(/```html/g, '').replace(/```/g, '').trim();
+                }
+                
+                state.changelog = generatedText;
+                renderOutput();
+                notify("Changelog generated!", "sparkles");
+            } catch (error) {
+                notify("AI Error: " + error.message, "alert-circle");
+            } finally {
+                setLoading(false, 'generate');
+            }
+        }
+
+        // --- UI Updates ---
+
+        function setLoading(isLoading, part) {
+            if (part === 'connect') {
+                state.isFetching = isLoading;
+                els.connectBtn.disabled = isLoading;
+                els.connectText.classList.toggle('hidden', isLoading);
+                els.connectLoader.classList.toggle('hidden', !isLoading);
+            } else if (part === 'fetch') {
+                els.fetchBtn.disabled = isLoading;
+                els.fetchIcon.classList.toggle('hidden', isLoading);
+                els.fetchLoader.classList.toggle('hidden', !isLoading);
+                els.fetchText.innerText = isLoading ? 'Fetching...' : 'Fetch Commits';
+            } else if (part === 'generate') {
+                state.isGenerating = isLoading;
+                els.generateBtn.disabled = isLoading;
+                els.generateText.classList.toggle('hidden', isLoading);
+                els.generateLoader.classList.toggle('hidden', !isLoading);
+            }
+        }
+
+        function renderAuthUI() {
+            if (state.isAuthenticated) {
+                els.authForm.classList.add('hidden');
+                els.configForm.classList.remove('hidden');
+                els.logoutBtn.classList.remove('hidden');
+            } else {
+                els.authForm.classList.remove('hidden');
+                els.configForm.classList.add('hidden');
+                els.logoutBtn.classList.add('hidden');
+                els.generationSection.classList.add('hidden');
+                state.repos = [];
+                state.selectedRepo = null;
+                els.selectedRepoName.innerText = "Search repository...";
+                els.selectedRepoName.classList.add('text-stone-400');
+                els.selectedRepoName.classList.remove('text-stone-700');
+            }
+        }
+
+        function renderRepoList() {
+            const searchTerm = els.repoSearch.value.toLowerCase();
+            const filtered = state.repos.filter(r => r.name.toLowerCase().includes(searchTerm));
+            
+            els.repoList.innerHTML = filtered.map(repo => `
+                <button class="w-full text-left px-3 py-2 text-xs hover:bg-stone-50 text-stone-700 transition-colors border-b border-stone-50 last:border-0 font-medium font-mono" onclick="selectRepo(${repo.id})">
+                    ${repo.name}
+                </button>
+            `).join('');
+            
+            if (filtered.length === 0) {
+                els.repoList.innerHTML = `<div class="p-4 text-center text-stone-400 text-[10px] font-bold uppercase tracking-widest">No repos found</div>`;
+            }
+        }
+
+        window.selectRepo = (id) => {
+            state.selectedRepo = state.repos.find(r => r.id === id);
+            els.selectedRepoName.innerText = state.selectedRepo.name;
+            els.selectedRepoName.classList.remove('text-stone-400');
+            els.selectedRepoName.classList.add('text-stone-700');
+            els.repoDropdownMenu.classList.add('hidden');
+            els.generationSection.classList.add('hidden');
+            state.commits = [];
+        };
+
+        function renderCommitList() {
+            els.commitCount.innerText = `(${state.commits.length})`;
+            els.commitList.innerHTML = state.commits.map(c => `
+                <div class="p-3 bg-white rounded-md border border-stone-200 hover:border-emerald-200 transition-all shadow-sm group">
+                    <p class="text-[11px] font-medium text-stone-800 line-clamp-2 leading-relaxed">${c.message}</p>
+                    <div class="flex items-center gap-2 mt-1.5 text-[9px] font-bold text-stone-400 uppercase tracking-wider group-hover:text-emerald-500 transition-colors">
+                        <span class="bg-stone-100 px-1 py-0.5 rounded text-stone-500 font-mono">${c.sha}</span>
+                        <span>•</span>
+                        <span>${formatDate(c.date)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderOutput() {
+            els.placeholderEmpty.classList.add('hidden');
+            els.outputContent.classList.remove('hidden');
+            
+            if (state.outputMode === 'email') {
+                els.outputRaw.classList.add('hidden');
+                els.outputHtml.classList.remove('hidden');
+                els.outputHtml.innerHTML = state.changelog;
+            } else {
+                els.outputHtml.classList.add('hidden');
+                els.outputRaw.classList.remove('hidden');
+                els.outputRaw.innerText = state.changelog;
+            }
+        }
+
+        // --- Event Listeners ---
+
+        els.connectBtn.addEventListener('click', fetchRepos);
+
+        els.logoutBtn.addEventListener('click', () => {
+            state.isAuthenticated = false;
+            state.token = '';
+            els.tokenInput.value = '';
+            renderAuthUI();
+            notify("Disconnected", "log-out");
+        });
+
+        document.getElementById('platform-github').addEventListener('click', (e) => {
+            state.platform = 'github';
+            e.currentTarget.classList.add('bg-white', 'shadow-sm', 'text-stone-800', 'ring-1', 'ring-stone-200');
+            e.currentTarget.classList.remove('text-stone-400', 'hover:bg-white/50');
+            document.getElementById('platform-gitlab').classList.remove('bg-white', 'shadow-sm', 'text-stone-800', 'ring-1', 'ring-stone-200');
+            document.getElementById('platform-gitlab').classList.add('text-stone-400', 'hover:bg-white/50');
+        });
+
+        document.getElementById('platform-gitlab').addEventListener('click', (e) => {
+            state.platform = 'gitlab';
+            e.currentTarget.classList.add('bg-white', 'shadow-sm', 'text-stone-800', 'ring-1', 'ring-stone-200');
+            e.currentTarget.classList.remove('text-stone-400', 'hover:bg-white/50');
+            document.getElementById('platform-github').classList.remove('bg-white', 'shadow-sm', 'text-stone-800', 'ring-1', 'ring-stone-200');
+            document.getElementById('platform-github').classList.add('text-stone-400', 'hover:bg-white/50');
+        });
+
+        els.tokenInput.addEventListener('input', (e) => state.token = e.target.value);
+
+        els.repoDropdownToggle.addEventListener('click', () => {
+            els.repoDropdownMenu.classList.toggle('hidden');
+        });
+
+        els.repoSearch.addEventListener('input', renderRepoList);
+
+        els.timeBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                state.timeframe = e.target.dataset.time;
+                els.timeBtns.forEach(b => {
+                    b.classList.remove('bg-white', 'shadow-sm', 'text-stone-800', 'ring-1', 'ring-stone-200');
+                    b.classList.add('text-stone-400', 'hover:text-stone-800');
+                });
+                e.target.classList.add('bg-white', 'shadow-sm', 'text-stone-800', 'ring-1', 'ring-stone-200');
+                e.target.classList.remove('text-stone-400', 'hover:text-stone-800');
+                
+                els.customDateRange.classList.toggle('hidden', state.timeframe !== 'custom');
+                if (state.timeframe === 'custom') {
+                    els.startDate.value = formatDate(getRelativeDate(7));
+                    els.endDate.value = formatDate(new Date());
+                }
+            });
+        });
+
+        els.fetchBtn.addEventListener('click', fetchCommits);
+
+        els.modeBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const target = e.currentTarget;
+                state.outputMode = target.id === 'mode-markdown' ? 'markdown' : 'email';
+                els.modeBtns.forEach(b => {
+                    b.classList.remove('bg-white', 'shadow-sm', 'text-stone-800');
+                    b.classList.add('text-stone-400', 'hover:text-stone-800');
+                });
+                target.classList.add('bg-white', 'shadow-sm', 'text-stone-800');
+                target.classList.remove('text-stone-400', 'hover:text-stone-800');
+                if (state.changelog) renderOutput();
+            });
+        });
+
+        els.generateBtn.addEventListener('click', generateChangelog);
+
+        // OpenRouter listeners
+        document.getElementById('openrouter-model').addEventListener('change', (e) => state.openrouterModel = e.target.value);
+        document.getElementById('custom-prompt').addEventListener('input', (e) => state.customPrompt = e.target.value);
+
+        if (els.apiKeyInput) {
+            els.apiKeyInput.value = state.aiApiKey;
+            els.apiKeyInput.addEventListener('input', (e) => {
+                state.aiApiKey = e.target.value;
+                localStorage.setItem('stethoscope_api_key', e.target.value);
+            });
+        }
+
+        els.copyBtn.addEventListener('click', () => {
+            if (!state.changelog) return;
+            const textArea = document.createElement("textarea");
+            textArea.value = state.changelog;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            notify("Copied to clipboard!", "check");
+        });
+
+        els.downloadBtn.addEventListener('click', () => {
+            if (!state.changelog) return;
+            const ext = state.outputMode === 'email' ? 'html' : 'md';
+            const blob = new Blob([state.changelog], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `changelog-${state.selectedRepo.name.replace('/', '-')}.${ext}`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!els.repoDropdownToggle.contains(e.target) && !els.repoDropdownMenu.contains(e.target)) {
+                els.repoDropdownMenu.classList.add('hidden');
+            }
+        });
+
+        // Initialize Icons
+        window.onload = () => lucide.createIcons();
+    </script>
+</body>
+</html>
