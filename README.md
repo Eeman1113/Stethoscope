@@ -1,0 +1,2 @@
+# Stethoscope
+Git Changelog Generator
